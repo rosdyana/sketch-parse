@@ -4,7 +4,7 @@
 
 This is a neural network for (semantic) sketch segmentation. Use it to associate semantics with your freehand sketches!
 
-![Results](./SketchLab-sketches-qualitative-results-ACMMM.svg)
+![Results](./SketchLab-sketches-qualitative-results-ACMMM.png)
 
 The four panels are chosen from the 100th, 75th, 50th, 25th percentile accuracy of segmentation (by IoU) respectively. As you can see, even in (relatively) bad cases, we can provide fairly accurate segmentations!
 
@@ -12,7 +12,7 @@ The four panels are chosen from the 100th, 75th, 50th, 25th percentile accuracy 
 
 We have a multi-task deep neural network that can segment freehand sketches as well as predict a global pose:
 
-![Results](./model.svg)
+![Results](./model.png)
 
 # Contents
 
