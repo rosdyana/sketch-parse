@@ -8,7 +8,8 @@ from torch.autograd import Variable
 import torch.optim as optim
 import scipy.misc
 import torch.backends.cudnn as cudnn
-import sys, os
+import sys
+import os
 import matplotlib.pyplot as plt
 from docopt import docopt
 import subprocess as subP
@@ -43,36 +44,36 @@ cudnn.enabled = False
 gpu0 = int(args['--gpu0'])
 
 snapPrefix = 'r1_' \
-            + str(float(args['--maxIter'])/1000) + 'k_'\
-            + 'bs' + args['--batchSize'] + '_' \
-            + 'lr' +  ('{:.2e}'.format( float(args['--lr']) ))  + '_' \
+    + str(float(args['--maxIter'])/1000) + 'k_'\
+    + 'bs' + args['--batchSize'] + '_' \
+    + 'lr' + ('{:.2e}'.format(float(args['--lr']))) + '_' \
 
 if not args['--segnetLoss']:
     snapPrefix = snapPrefix + 'VCELoss_'
 
 if args['--snapPrefix'] != 'NoFile':
-    snapPrefix = args['--snapPrefix'] 
+    snapPrefix = args['--snapPrefix']
 
-print snapPrefix
+print(snapPrefix)
 
 
-def find_med_frequency(img_list,max_):
+def find_med_frequency(img_list, max_):
     """This function returns parameters used to calculate the segnet loss weights
     """
     gt_path = args['--GTpath']
     dict_store = {}
     for i in range(max_):
         dict_store[i] = []
-    for i,piece in enumerate(img_list):
-        gt = cv2.imread(gt_path+piece+'.png')[:,:,0]
+    for i, piece in enumerate(img_list):
+        gt = cv2.imread(gt_path+piece+'.png')[:, :, 0]
         for i in range(max_):
             dict_store[i].append(np.count_nonzero(gt == i))
     global_stats_sum = np.zeros((max_,))
     global_stats_presence = np.zeros((max_,))
     for i in range(max_):
         global_stats_sum[i] = np.sum(dict_store[i])
-        global_stats_presence[i] = np.count_nonzero(dict_store[i]) 
-    return global_stats_sum,global_stats_presence
+        global_stats_presence[i] = np.count_nonzero(dict_store[i])
+    return global_stats_sum, global_stats_presence
 
 
 def read_file(path_to_file):
@@ -82,13 +83,16 @@ def read_file(path_to_file):
             img_list.append(line[:-1])
     return img_list
 
+
 def chunker(seq, size):
-    return (seq[pos:pos+size] for pos in xrange(0,len(seq), size))
+    return (seq[pos:pos+size] for pos in xrange(0, len(seq), size))
+
 
 def resize_label_batch(label, size):
-    label_resized = np.zeros((size,size,1,label.shape[3]))
-    interp = nn.UpsamplingBilinear2d(size=(size,size))
-    label_resized[:,:,:,:] = interp(Variable(torch.from_numpy(label.transpose(3,2,0,1)))).data.numpy().transpose(2,3,0,1)
+    label_resized = np.zeros((size, size, 1, label.shape[3]))
+    interp = nn.UpsamplingBilinear2d(size=(size, size))
+    label_resized[:, :, :, :] = interp(Variable(torch.from_numpy(
+        label.transpose(3, 2, 0, 1)))).data.numpy().transpose(2, 3, 0, 1)
     return label_resized
 
 
@@ -108,54 +112,56 @@ HCpose = {}
 with open('data/lists/Pose_all_label.txt', 'r') as f:
     for line in f:
         line = line.strip()
-        imId, pose= line.split(' ')
-	if imId[0] == '2': 
-	    year, imId, crop = imId.split('_')
+        imId, pose = line.split(' ')
+        if imId[0] == '2':
+            year, imId, crop = imId.split('_')
             imId = os.path.splitext(year+'_'+imId+'-'+crop)[0]
-	else:
-	    imId = os.path.splitext(imId)[0]
-	HCpose[imId] = int(pose)
+        else:
+            imId = os.path.splitext(imId)[0]
+        HCpose[imId] = int(pose)
 
 
 def get_data_from_chunk_v2(chunk):
-    gt_path =  args['--GTpath']
+    gt_path = args['--GTpath']
     img_path = args['--IMpath']
-    images = np.zeros((321,321,3,len(chunk)))
-    gt = np.zeros((321,321,1,len(chunk)))
+    images = np.zeros((321, 321, 3, len(chunk)))
+    gt = np.zeros((321, 321, 1, len(chunk)))
     poses = np.zeros((1, len(chunk)))
     for i, piece in enumerate(chunk):
-	images[:,:,:,i] = cv2.imread(img_path+piece+'.png')
-	imId, aug = piece.split('(')
-	pose = int(HCpose[imId])
-	# Account for flip augmentations
-	if 'm' in aug: # ugly hack because poses are 0-7 in vivek's list
-	    pose = mirrorMap[pose+1]
-	    pose -=1
-	poses[:,i] = pose
-        gt[:,:,0,i] = cv2.imread(gt_path+piece+'.png')[:,:,0]
+        images[:, :, :, i] = cv2.imread(img_path+piece+'.png')
+        imId, aug = piece.split('(')
+        pose = int(HCpose[imId])
+        # Account for flip augmentations
+        if 'm' in aug:  # ugly hack because poses are 0-7 in vivek's list
+            pose = mirrorMap[pose+1]
+            pose -= 1
+        poses[:, i] = pose
+        gt[:, :, 0, i] = cv2.imread(gt_path+piece+'.png')[:, :, 0]
 
-    labels = [resize_label_batch(gt,i) for i in [41,41,21,41]]
+    labels = [resize_label_batch(gt, i) for i in [41, 41, 21, 41]]
 #   image shape H,W,3,batch -> batch,3,H,W
-    images = images.transpose((3,2,0,1))
+    images = images.transpose((3, 2, 0, 1))
     images = torch.from_numpy(images).float()
     return images, labels, poses
 
-def loss_calc_seg(out, label,gpu0,seg_weights):
+
+def loss_calc_seg(out, label, gpu0, seg_weights):
     """This function returns cross entropy loss for semantic segmentation
     """
    # out shape batch_size x channels x h x w -> batch_size x channels x h x w
     # label shape h x w x 1 x batch_size  -> batch_size x 1 x h x w
-    label = label[:,:,0,:].transpose(2,0,1)
+    label = label[:, :, 0, :].transpose(2, 0, 1)
     label = torch.from_numpy(label).long()
     label = Variable(label).cuda(gpu0)
     m = nn.LogSoftmax()
     if args['--segnetLoss']:
-        criterion = nn.NLLLoss2d(torch.from_numpy(seg_weights).float().cuda(gpu0))
+        criterion = nn.NLLLoss2d(torch.from_numpy(
+            seg_weights).float().cuda(gpu0))
     else:
         criterion = nn.NLLLoss2d()
     out = m(out)
-    
-    return criterion(out,label)
+
+    return criterion(out, label)
 
 
 def loss_calc_pose(out, label, gpu0):
@@ -164,12 +170,13 @@ def loss_calc_pose(out, label, gpu0):
     label = torch.from_numpy(label).long()
     label = Variable(label).cuda(gpu0)
     criterion = nn.CrossEntropyLoss()
-    
-    return criterion(out,label)
+
+    return criterion(out, label)
 
 
-def lr_poly(base_lr, iter,maxIter,power):
+def lr_poly(base_lr, iter, maxIter, power):
     return base_lr*((1-float(iter)/maxIter)**(power))
+
 
 def get_1x_lr_params_NOscale(model):
     b = []
@@ -199,9 +206,10 @@ def get_1x_lr_params_NOscale(model):
         for j in b[i].modules():
             jj = 0
             for k in j.parameters():
-                jj+=1
+                jj += 1
                 if k.requires_grad:
                     yield k
+
 
 def get_10x_lr_params(model):
     b = []
@@ -214,9 +222,10 @@ def get_10x_lr_params(model):
         for i in b[j]:
             yield i
 
+
 if not os.path.exists('data/snapshots'):
     os.makedirs('data/snapshots')
-model = getattr(deeplab_resnet_sketchParse_r1,'Res_Deeplab')()
+model = getattr(deeplab_resnet_sketchParse_r1, 'Res_Deeplab')()
 
 saved_state_dict = torch.load('MS_DeepLab_resnet_pretained_VOC.pth')
 old_model_dict = model.state_dict()
@@ -226,11 +235,11 @@ for i in old_model_dict:
 
 model.load_state_dict(saved_state_dict)
 
-## Training hyper params
+# Training hyper params
 
 maxIter = int(args['--maxIter'])
 batch_size = int(args['--batchSize'])
-base_lr = float(args['--lr']) 
+base_lr = float(args['--lr'])
 lambda1 = float(args['--lambda1'])
 iterSize = int(args['--iterSize'])
 model.float()
@@ -244,12 +253,14 @@ for i in range(100):
     data_list.extend(img_list)
 
 # Calculate SegNet Loss weights
-global_stats_sum,global_stats_presence = find_med_frequency(img_list,int(args['--noParts']))
+global_stats_sum, global_stats_presence = find_med_frequency(
+    img_list, int(args['--noParts']))
 freq_c = global_stats_sum/global_stats_presence
 seg_weights = np.median(freq_c)/freq_c
 
 model.cuda(gpu0)
-optimizer = optim.SGD([{'params': get_1x_lr_params_NOscale(model), 'lr': base_lr }, {'params': get_10x_lr_params(model), 'lr': 10*base_lr} ], lr = base_lr, momentum = 0.9)
+optimizer = optim.SGD([{'params': get_1x_lr_params_NOscale(model), 'lr': base_lr}, {
+                      'params': get_10x_lr_params(model), 'lr': 10*base_lr}], lr=base_lr, momentum=0.9)
 optimizer.zero_grad()
 
 data_gen = chunker(data_list, batch_size)
@@ -261,29 +272,31 @@ for iter in range(maxIter+1):
     images = Variable(images).cuda(gpu0)
 
     out = model(images)
-	
+
     loss = loss_calc_seg(out[0], label[0], gpu0, seg_weights)
-	
+
     for i in range(len(out)-2):
-        loss = loss + loss_calc_seg(out[i+1],label[i+1],gpu0, seg_weights)
+        loss = loss + loss_calc_seg(out[i+1], label[i+1], gpu0, seg_weights)
     loss = loss + lambda1*loss_calc_pose(out[-1], pose[0], gpu0)
 
     (loss/iterSize).backward()
 
-    if iter %1 == 0:
-        print 'iter = ',iter, 'of',maxIter,'completed, loss = ', loss.data
+    if iter % 1 == 0:
+        print('iter = ', iter, 'of', maxIter, 'completed, loss = ', loss.data)
 
-    if iter %iterSize  == 0:
+    if iter % iterSize == 0:
         optimizer.step()
-        lr_ = lr_poly(base_lr,iter,maxIter,0.9)
-        print '(poly lr policy) learning rate',lr_
-        optimizer = optim.SGD([{'params': get_1x_lr_params_NOscale(model), 'lr': lr_ }, {'params': get_10x_lr_params(model), 'lr': 10*lr_} ], lr = lr_, momentum = 0.9)
+        lr_ = lr_poly(base_lr, iter, maxIter, 0.9)
+        print('(poly lr policy) learning rate', lr_)
+        optimizer = optim.SGD([{'params': get_1x_lr_params_NOscale(model), 'lr': lr_}, {
+                              'params': get_10x_lr_params(model), 'lr': 10*lr_}], lr=lr_, momentum=0.9)
         optimizer.zero_grad()
 
-
-    if iter % 1000 == 0 and iter !=0:
-        print 'taking snapshot ...'
-        snapPath = 'data/snapshots/DeepLab_RN_auxPose_' + snapPrefix +str(iter)+'.pth'
+    if iter % 1000 == 0 and iter != 0:
+        print('taking snapshot ...')
+        snapPath = 'data/snapshots/DeepLab_RN_auxPose_' + \
+            snapPrefix + str(iter)+'.pth'
         torch.save(model.state_dict(), snapPath)
 
-subP.call(['python eval_r1.py', '--snapPrefix', 'DeepLab_RN_auxPose_' + snapPrefix ])
+subP.call(['python eval_r1.py', '--snapPrefix',
+           'DeepLab_RN_auxPose_' + snapPrefix])

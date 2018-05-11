@@ -1,0 +1,115 @@
+{
+    "train_r5": {
+        "train_txt_list": [
+            "cow_horse",
+            "cat_dog_sheep",
+            "bus_car",
+            "bicycle_motorbike",
+            "aeroplane_bird"
+        ],
+        "no_parts": [
+            5,
+            5,
+            7,
+            5,
+            9
+        ]
+    },
+    "table3": {
+        "max_label_dict": {
+            "cow": 4,
+            "horse": 4,
+            "cat": 4,
+            "dog": 4,
+            "sheep": 4,
+            "bus": 6,
+            "car": 5,
+            "bicycle": 4,
+            "motorbike": 4,
+            "bird": 8,
+            "airplane": 5
+        }
+    },
+    "table1": {
+        "max_label_dict": {
+            "cow": 4,
+            "horse": 4,
+            "cat": 4,
+            "dog": 4,
+            "sheep": 4,
+            "bus": 6,
+            "car": 5,
+            "bicycle": 4,
+            "motorbike": 4,
+            "bird": 8,
+            "airplane": 5
+        }
+    },
+    "evalpyt_r5_D": {
+        "caffe_path": "/data1/ravikiran/SketchObjPartSegmentation/src/caffe-switch/caffe/python",
+        "max_label_dict": {
+            "cow": 4,
+            "horse": 4,
+            "cat": 4,
+            "dog": 4,
+            "sheep": 4,
+            "bus": 6,
+            "car": 5,
+            "bicycle": 4,
+            "motorbike": 4,
+            "bird": 8,
+            "airplane": 5
+        },
+        "class_list": [
+            "airplane-4",
+            "bird-4"
+        ]
+    },
+    "eval_r5": {
+        "max_label_dict": {
+            "cow": 4,
+            "horse": 4,
+            "cat": 4,
+            "dog": 4,
+            "sheep": 4,
+            "bus": 6,
+            "car": 5,
+            "bicycle": 4,
+            "motorbike": 4,
+            "bird": 8,
+            "airplane": 5
+        },
+        "class_list": [
+            "cow-0",
+            "horse-0",
+            "cat-1",
+            "dog-1",
+            "sheep-1",
+            "bus-2",
+            "car-2",
+            "bicycle-3",
+            "motorbike-3",
+            "airplane-4",
+            "bird-4"
+        ]
+    },
+    "eval_r5_test": {
+        "max_label_dict": {
+            "cow": 4,
+            "horse": 4,
+            "cat": 4,
+            "dog": 4,
+            "sheep": 4,
+            "bus": 6,
+            "car": 5,
+            "bicycle": 4,
+            "motorbike": 4,
+            "bird": 8,
+            "airplane": 5
+        },
+        "class_list": [
+            "airplane-4",
+            "bird-4"
+        ]
+    }
+}
